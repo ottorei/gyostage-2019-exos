@@ -1,0 +1,88 @@
+- name: ExtremeOS Gyostage2019 ASENNUSPOYTA
+  hosts: EX-20
+  vars:
+    ACCESS_VLAN: 10
+    ACCESS_PORTS: 1-24
+    UPLINK_PORTS: 25-26
+  
+  tasks:
+
+  - name: DELETING DEFAULT VLAN FROM ALL PORTS ...
+    exos_config:
+      lines: 
+        - configure vlan default delete ports all
+
+  - name: CREATING VLANS ...
+    exos_config:
+      lines:
+        - create vlan VLAN{{ ACCESS_VLAN }}
+        - configure vlan VLAN{{ ACCESS_VLAN }} tag {{ ACCESS_VLAN }}
+
+  - name: CONFIGURING VLANS TO TRUNK PORTS ...
+    exos_config:
+      lines:
+        - configure vlan VLAN{{ ACCESS_VLAN }} add ports {{ UPLINK_PORTS }} tagged
+        - configure vlan "VLAN99" add ports {{ UPLINK_PORTS }} tagged
+        - configure ports {{ UPLINK_PORTS }} description-string UPLINK
+
+  - name: CONFIGURING VLANS TO ACCESS PORTS ...
+    exos_config:
+      lines:
+        - configure vlan VLAN{{ ACCESS_VLAN }} add ports {{ ACCESS_PORTS }} untagged
+        - configure ports 1-24 description-string KONEPAIKKA
+
+  - name: CONFIGURING LOOP-PROTECTION TO ACCESS PORTS ...
+    exos_config:
+      lines:
+        - enable elrp-client
+        - configure elrp-client periodic VLAN{{ ACCESS_VLAN }} ports {{ ACCESS_PORTS }} interval 1 log disable-port duration 15
+  
+  - name: CONFIGURING LOOP-PROTECTION EXCLUDES TO UPLINKS ...
+    exos_config:
+      lines:
+        - configure elrp-client disable-port exclude {{ UPLINK_PORTS }}
+
+  - name: CONFIGURING DHCP-SNOOPING TRUST TO UPLINKS ...
+    exos_config:
+      lines:
+        - configure trusted-ports {{ UPLINK_PORTS }} trust-for dhcp-server
+
+  - name: CONFIGURING DHCP-SNOOPING TO ACCESS PORTS ...
+    exos_config:
+      lines:
+        - enable ip-security dhcp-snooping vlan VLAN{{ ACCESS_VLAN }} ports {{ ACCESS_PORTS }} violation-action drop-packet snmp-trap
+
+  - name: CONFIGURING IGMP-SNOOPING TO ACCESS VLAN ...
+    exos_config:
+      lines:
+        - enable igmp snooping vlan VLAN{{ ACCESS_VLAN }}
+
+  - name: CONFIGURING MAC-LIMIT TO ACCESS PORTS ...
+    exos_config:
+      lines:
+        - configure ports {{ ACCESS_PORTS }} vlan VLAN{{ ACCESS_VLAN }} limit-learning 1 action stop-learning
+
+  - name: CONFIGURING STORM CONTROL TO ACCESS PORTS ...
+    exos_config:
+      lines:
+        - configure ports {{ ACCESS_PORTS }} rate-limit flood broadcast 1000
+        - configure ports {{ ACCESS_PORTS }} rate-limit flood unknown-destmac 1000
+
+  - name: CONFIGURING SNMP SETTINGS ...
+    exos_config:
+      lines:
+        - configure snmp sysName "{{ inventory_hostname }}"
+        - configure snmp sysLocation "GYOSTAGE2019"
+        - configure snmp sysContact "root@digipahuus.fi"
+
+  - name: Configure SNTP-settings
+    exos_config:
+      lines:
+        - enable sntp-client
+        - configure sntp-client primary 10.44.99.1 vr VR-Default
+
+
+  - name: Save running config to startup when modified
+    exos_config:
+      save_when: modified
+
