@@ -1,0 +1,44 @@
+# These settings allow the switch to be centrally managed using Ansible.
+
+1. Reset switch from bootloader [SERIAL CONNECTION]
+
+config none
+boot
+
+2. Add management settings and change default password [SERIAL CONNECTION]
+
+configure vlan default delete ports all
+create vlan "VLAN99"
+configure vlan VLAN99 tag 99
+configure vlan "VLAN99" ipaddress 10.44.99.(number) 255.255.255.0
+configure iproute add default 10.44.99.1
+configure vlan99 add ports 25-26 tagged
+configure account admin encrypted "4b8hLZ$4v9hN9ZxGybPLz32k/h7T0"
+save
+
+3. Update secondary firmware and install SSH [TELNET CONNECTION]
+
+download image 10.44.99.1 summitX-15.3.5.2-patch1-14.xos vr "VR-Default" secondary
+download image 10.44.99.1 summitX-15.3.5.2-patch1-14-ssh.xmod vr "VR-Default" secondary
+
+4. Boot from secondary image [TELNET CONNECTION]
+
+use image secondary
+reboot
+
+5. Update primary firmware and install SSH [TELNET CONNECTION]
+
+download image 10.44.99.1 summitX-15.3.5.2-patch1-14.xos vr "VR-Default" primary
+download image 10.44.99.1 summitX-15.3.5.2-patch1-14-ssh.xmod vr "VR-Default" primary
+
+6. Boot from primary firmware
+
+use image primary
+reboot
+
+7. Enable SSH [TELNET]
+
+enable ssh2
+save
+reboot
+
